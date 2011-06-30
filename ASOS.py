@@ -81,6 +81,14 @@ class ASOS:
         return np.array(lowTemps,dtype=float)
 
     def getPrecip(self, startDates, endDates):
+        """ getPrecip(startDates,endDates)
+            Purpose:  Retrieve precipitation between the given start and end dates.
+            Parameters:
+                startDates [type=list,tuple,np.array]:  Array of starting date strings (format is 'YYYYMMDD_HH:MM') for each forecast period.
+                endDates [type=list,tuple,np.array]:  Array of starting date strings (format is 'YYYYMMDD_HH:MM', same as in startDates) for each forecast period.
+            Returns:
+                A boolean array of precipitation occurrence corresponding to the periods in startDates and endDates.
+        """
         precip = []
         for idx in xrange(len(startDates)):
             precip1hr = self.getDataValues(startDates[idx], endDates[idx], 'p01m')
