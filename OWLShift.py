@@ -2,6 +2,7 @@ import numpy as np
 import sys,traceback
 class OWLShift:
     
+    # Static public list of all the possible forecast periods for an OWL shift
     _forecast_days = ['1A', '1B', '2', '3', '4']
 
     def __init__(self,day,period):
@@ -48,7 +49,7 @@ class OWLShift:
                 site - site where variable is being extracted.
                 filter - if True, remove dates with missing values for the selected variable.
             Returns:
-                A tuple of arrays with the first array containing the verifying dates and the second array containing the variable values.
+                A tuple of arrays with the first array containing the start verifying dates/times, the second array containing the end verifying dates/times, and the third array containing the variable values.
         """
         
         if filter == False:
