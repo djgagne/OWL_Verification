@@ -10,7 +10,10 @@ import numpy as np
 days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
 times = ['Mor','Aft','Eve']
 
+# Dictionary mapping verifying points to forecast points
 verif_to_fcst = {'GUY':'KGUY', 'WWR':'KWWR', 'CLK':'KCSM', 'LTS':'KLTS', 'LAW':'KLAW', 'END':'KEND', 'OKC':'KOKC', 'OUN':'KOUN', 'ADM':'KADM', 'TUL':'KTUL', 'MLC':'KMLC', 'PRX':'KHHW', 'EYW':'KEYW' }
+
+# Dictionary mapping forecast points to verifying points
 fcst_to_verif = {'KGUY':'GUY', 'KWWR':'WWR', 'KCSM':'CLK', 'KLTS':'LTS', 'KLAW':'LAW', 'KEND':'END', 'KOKC':'OKC', 'KOUN':'OUN', 'KADM':'ADM', 'KTUL':'TUL', 'KMLC':'MLC', 'KHHW':'PRX', 'KEYW':'EYW' }
 
 def main():
@@ -111,6 +114,19 @@ def collectASOS(startDate,endDate,sites=None,asos_dir='verif_data/'):
     return sites
 
 def verifyPrecip(forecasts, observations, start_date, end_date):
+    """
+    verifyPrecip()
+    Purpose:    Main precipitation verification function
+    Parameters: forecasts [type=dictionary]
+                    Dictionary mapping shift days (e.g. 'Tue_Aft' for Tuesday Afternoon) to their OWLShift objects.
+                observations [type=dictionary]
+                    Dictionary mapping observation points (e.g. 'OUN' for Norman) to their ASOS objects.
+                start_date [type=string]
+                    String containing the date of the start of the verification period (format is 'YYYYMMDD_HH:MM').
+                end_date [type=string]
+                    String containing the date of the end of the verification period (format is 'YYYYMMDD_HH:MM', same as in start_date).
+    Returns:    [nothing ... yet]
+    """
     for period in OWLShift._forecast_days:
 #        for station in observations.keys():
 #            print "Day %s forecasts for station %s:" % (period, verif_to_fcst[station])
@@ -130,6 +146,13 @@ def verifyPrecip(forecasts, observations, start_date, end_date):
     return
 
 def dump(grid):
+    """
+    dump()
+    Purpose:    Dump a grid of any number of dimensions to the console.  May want to modify it to dump to a file.
+    Parameters: grid [type=np.array]
+                    The grid to dump
+    Returns:    [nothing]
+    """
     if len(grid.shape) == 1:
         string = ""
         for val in grid:
@@ -142,6 +165,25 @@ def dump(grid):
     return
 
 def precipContingencyTable(forecasts, observations, start_date, end_date, stations=None, shift=None, period=None):
+    """
+    precipContingencyTable()
+    Purpose:    Produce a 2x11 contingency table containing all the precipitation probability forecasts for the period.
+    Parameters: forecasts [type=dictionary]
+                    Dictionary mapping shift days (e.g. 'Tue_Aft' for Tuesday Afternoon) to their OWLShift objects.
+                observations [type=dictionary]
+                    Dictionary mapping observation points (e.g. 'OUN' for Norman) to their ASOS objects.
+                start_date [type=string]
+                    String containing the date of the start of the verification period (format is 'YYYYMMDD_HH:MM').
+                end_date [type=string]
+                    String containing the date of the end of the verification period (format is 'YYYYMMDD_HH:MM', same as in start_date).
+                stations [type=list,tuple,string]
+                    A station or list of stations to include in the contingency table.  Optional, defaults to KOUN if not given.
+                shift [type=string]
+                    The shift to verify (e.g. 'Tue_Aft' for Tuesday Afternoon).  Not implemented yet.
+                period [type=string]
+                    The period to verify (one of '1A', '1B', '2', '3', or '4').  Optional, defaults to '1A' if not given.
+    Returns:    The completed contingency table as a numpy array.
+    """
     contingency_table = np.zeros((2, 11), dtype=float)
     total_forecasts = 0
 
