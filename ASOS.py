@@ -79,6 +79,14 @@ class ASOS:
             temps = self.getDataValues(self,startDates[idx],endDates[idx],'tmpf')
             lowTemps.append(np.min(temps[np.nonzero(temps > -990)]))
         return np.array(lowTemps,dtype=float)
+
+    def getPrecip(self, startDates, endDates):
+        precip = []
+        for idx in xrange(len(startDates)):
+            precip1hr = self.getDataValues(startDates[idx], endDates[idx], 'p01m')
+            precip.append(precip1hr.sum() > 0)
+        return np.array(precip, dtype=bool)
+
 def main():
     for site in ['adm','clk','end','eyw','guy','prx','law','lts','mlc','okc','oun','prx','tul','wwr']:
         print site

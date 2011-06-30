@@ -1,6 +1,9 @@
 import numpy as np
 import sys,traceback
 class OWLShift:
+    
+    _forecast_days = ['1A', '1B', '2', '3', '4']
+
     def __init__(self,day,period):
         """OWL Shift class
             Purpose:  Stores forecast information about a particular OWL shift.
@@ -53,10 +56,11 @@ class OWLShift:
         else:
             siteIdxs = np.nonzero(np.logical_and(np.logical_and(
                 np.logical_and(getattr(self,'day' + forecastDay)['SDATE'] >= startDate,
-                getattr(self,'day'+forecastDay)['EDATE'] <= endDate),
-                getattr(self,'day'+forecastDay)['SITE']==site),
-                getattr(self,'day' + forecastDay)[variable] > -900))
-        return (getattr(self,'day' + forecastDay)['SDATE'][siteIdxs],getattr(self,'day' + forecastDay)['EDATE'][siteIdxs],getattr(self,'day' + forecastDay)[variable][siteIdxs])
+                getattr(self, 'day' + forecastDay)['EDATE']  <= endDate),
+                getattr(self, 'day' + forecastDay)['SITE']   == site),
+                getattr(self, 'day' + forecastDay)[variable] >  -900))
+
+        return (getattr(self, 'day' + forecastDay)['SDATE'][siteIdxs], getattr(self, 'day' + forecastDay)['EDATE'][siteIdxs], getattr(self, 'day' + forecastDay)[variable][siteIdxs])
 
 if __name__ == "__main__":
     import cPickle as pickle

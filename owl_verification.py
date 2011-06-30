@@ -5,19 +5,25 @@ import os
 import re
 import cPickle as pickle
 import argparse
+import numpy as np
 
 days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
 times = ['Mor','Aft','Eve']
+
+verif_to_fcst = {'GUY':'KGUY', 'WWR':'KWWR', 'CLK':'KCSM', 'LTS':'KLTS', 'LAW':'KLAW', 'END':'KEND', 'OKC':'KOKC', 'OUN':'KOUN', 'ADM':'KADM', 'TUL':'KTUL', 'MLC':'KMLC', 'PRX':'KHHW', 'EYW':'KEYW' }
+fcst_to_verif = {'KGUY':'GUY', 'KWWR':'WWR', 'KCSM':'CLK', 'KLTS':'LTS', 'KLAW':'LAW', 'KEND':'END', 'KOKC':'OKC', 'KOUN':'OUN', 'KADM':'ADM', 'KTUL':'TUL', 'KMLC':'MLC', 'KHHW':'PRX', 'KEYW':'EYW' }
+
 def main():
     parser = argparse.ArgumentParser(description='Load and match forecasts and observed data.')
     parser.add_argument('--start',default='20090901',help='Start verification date in the format YYYYMMDD')
     parser.add_argument('--end',default='20110509',help='End verification date in the format YYYYMMDD')
     parser.add_argument('--update',action='store_true',help='Load data from pickle files and add any new data from files.')
-    parser.add_argument('--compare',action='store_true',help='Load data from pickle files and calculate comparison statistics.')
+    parser.add_argument('--frompickle',action='store_true', help='Load data from a pickle file.')
     parser.add_argument('--owlpickle',default='owl_shift_forecasts.pkl',help='Specify name of OWL forecast file.')
     parser.add_argument('--asospickle',default='asos_sites.pkl',help='Specify name of ASOS sites file')
+
     args = parser.parse_args()
-    if args.update:
+    if args.update or args.frompickle:
         shifts = pickle.load(open(args.owlpickle))
         asos_sites = pickle.load(open(args.asospickle))
     else:
@@ -26,10 +32,16 @@ def main():
         for day in days:
             for time in times:
                 shifts[day + '_' + time] = OWLShift(day,time)
-    shifts = collectForecasts(shifts,args.start,args.end)
-    asos_sites = collectASOS(args.start,args.end,asos_sites)
-    pickle.dump(shifts,open(args.owlpickle,'w'))
-    pickle.dump(asos_sites,open(args.asospickle,'w'))
+
+    if not args.frompickle:
+        shifts = collectForecasts(shifts,args.start,args.end)
+        asos_sites = collectASOS(args.start,args.end,asos_sites)
+        pickle.dump(shifts,open(args.owlpickle,'w'))
+        pickle.dump(asos_sites,open(args.asospickle,'w'))
+
+    verifyPrecip(shifts, asos_sites, args.start, args.end)
+    return
+
 def collectForecasts(shifts,startDate,endDate,forecastDir='fcst/'):
     """collectForecasts
         Purpose:  Loop through series of dates and load forecasts into appropriate OWL shifts
@@ -44,7 +56,7 @@ def collectForecasts(shifts,startDate,endDate,forecastDir='fcst/'):
     while (endDateTime - currDateTime).days >= 0:
         weekday = currDateTime.strftime('%a')
         currDate = currDateTime.strftime('%Y%m%d')
-        print currDate
+#       print currDate
         for time in times:
             if currDate + time + '.fcst' in forecastFiles:
                 loadOWLForecast(currDate,time,shifts[weekday + '_' + time])
@@ -73,6 +85,8 @@ def loadOWLForecast(date,shift,owlshift,forecastDir='fcst/'):
             forecast = [periodDates[perIdx][0].strftime('%Y%m%d_%H:%M'),periodDates[perIdx][1].strftime('%Y%m%d_%H:%M')]
             forecast.extend(splitLine(line))
             owlshift.addForecast(forecast,periods[perIdx])
+    return
+
 def collectASOS(startDate,endDate,sites=None,asos_dir='verif_data/'):
     """ collectASOS(sites,startDate,endDAte,asos_dir)
         Purpose:  Collect data from IEM ASOS data files.
@@ -95,6 +109,64 @@ def collectASOS(startDate,endDate,sites=None,asos_dir='verif_data/'):
         for site,asos in sites.iteritems():
             asos.update(startDate,endDate)
     return sites
+
+def verifyPrecip(forecasts, observations, start_date, end_date):
+    for period in OWLShift._forecast_days:
+#        for station in observations.keys():
+#            print "Day %s forecasts for station %s:" % (period, verif_to_fcst[station])
+#            ct = precipContingencyTable(forecasts, observations, start_date, end_date, stations=station, period=period)
+#            reliability = ct[1] / ct.sum(axis=0)
+#            print ct
+#        print
+        ct = precipContingencyTable(forecasts, observations, start_date, end_date, period=period)
+        reliability = ct[1] / ct.sum(axis=0)
+
+        print "Period %s" % period
+        print "Contingency Table:"
+        dump(ct)
+        print "Reliability:"
+        dump(reliability)
+        print
+    return
+
+def dump(grid):
+    if len(grid.shape) == 1:
+        string = ""
+        for val in grid:
+            string += "%8.2f " % val
+        print string
+    else:
+        for idx in range(grid.shape[0]):
+            dump(grid[idx])
+        print
+    return
+
+def precipContingencyTable(forecasts, observations, start_date, end_date, stations=None, shift=None, period=None):
+    contingency_table = np.zeros((2, 11), dtype=float)
+    total_forecasts = 0
+
+    if period is None:
+        period = OWLShift._forecast_days[0]
+
+    if stations is None:
+        stations = observations.keys()
+    elif type(stations) not in [ list, tuple ]:
+        stations = [ stations ]
+
+    for shift_name, shift_data in forecasts.iteritems():
+        for stn in stations:
+            pprb = shift_data.getForecasts(period, start_date, end_date, "PPRB", verif_to_fcst[stn])
+
+            shift_start_times, shift_end_times = pprb[:2]
+
+            precip_obs = observations[stn].getPrecip(shift_start_times, shift_end_times)
+
+            for idx in range(len(precip_obs)):
+                contingency_table[precip_obs[idx], pprb[2][idx] / 10] += 1
+                total_forecasts += 1
+
+    return contingency_table
+
 def splitLine(line,width=5):
     """Purpose:  Split line of fixed width data into list"""
     lineList = []
@@ -127,5 +199,6 @@ def setPeriodDates(date,shift):
     else:
         periodDates = []
     return periodDates
+
 if __name__=="__main__":
     main()
