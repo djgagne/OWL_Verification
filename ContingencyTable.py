@@ -1,23 +1,56 @@
 
 import numpy as np
 
+"""
+ContingencyTable
+Purpose:    Base class for the contingency tables.  Handles things like getting and setting individual items in the table and converting tables to strings.
+Started:    6-30-11 by Tim Supinie (tsupinie@ou.edu)
+Completed:  [not yet]
+Modified:   [not yet]
+"""
+
 class ContingencyTable(object):
 
     def fill(self, data):
+        """
+        fill() [public]
+        Purpose:    Fill the contingency table with an array of data.
+        Parameters: data [type=np.array]: The data to put in the contingency table
+        Returns:    [nothing]
+        """
         if data.shape != self.ct.shape:
             print "Error!"
 
         self.ct = data
         return
 
-    def __getitem__(self, key):
-        return self.ct[key]
+    def __getitem__(self, index):
+        """
+        __getitem__() [public]
+        Purpose:    Returns an item or array of items from the table (called as <ContingencyTable object>[index]).
+        Parameters: index [type=int,tuple]: The index in the table to return.  Can be an integer or a tuple of integers.
+        Returns:    The value(s) from the table.
+        """
+        return self.ct[index]
 
-    def __setitem__(self, key, value):
-        self.ct[key] = value
+    def __setitem__(self, index, value):
+        """
+        __setitem__() [public]
+        Purpose:    Sets an item or array of items in the table (called as <ContingencyTable object>[index] = value).
+        Parameters: index [type=int,tuple]: The index in the table to set.  Can be an integer or a tuple of integers.
+                    value [type=int]: The value to set the index to.
+        Returns:    [nothing]
+        """
+        self.ct[index] = value
         return 
 
-    def __str__(self, grid=None):
+    def __str__(self):
+        """
+        __str__() [public]
+        Purpose:    Returns a string representation of the contingency table (called as str(<ContingencyTable object>) or print to the console with print <ContingencyTable object>).
+        Parameters: [none]
+        Returns:    A string representation of the contingency table.
+        """
         string = ""
         for idx in range(self.ct.shape[0]):
             for jdy in range(self.ct.shape[1]):
@@ -25,8 +58,22 @@ class ContingencyTable(object):
             string += "\n"
         return string + "\n"
 
+"""
+ProbContingencyTable
+Purpose:    Handles computing scores for probability contingency tables (2 x n).
+Started:    6-30-11 by Tim Supinie (tsupinie@ou.edu)
+Completed:  [not yet]
+Modified:   [not yet]
+"""
+
 class ProbContingencyTable(ContingencyTable):
     def __init__(self, size=None, data=None):
+        """
+        __init__()
+        Purpose:    Constructor for the ProbContingencyTable class.  Either initializes it as a blank 2 x size table (fills it with zeros) or fills it with the data provided.
+        Parameters: size [type=int]: The size of the table to create.
+                    data [type=np.array]: Data to fill the initial table with
+        """
         if data is None:
             if size is None:
                 print "Error!"
@@ -40,10 +87,30 @@ class ProbContingencyTable(ContingencyTable):
         return
 
     def getReliability(self):
+        """
+        getReliability() [public]
+        Purpose:    Compute and return the data for a reliability diagram.
+        Parameters: [none]
+        Returns:    Reliability diagram data as a numpy array.
+        """
         return self.ct[1] / self.ct.sum(axis=0, dtype=float)
+
+"""
+MultiContingencyTable
+Purpose:    Handles computing scores for multiclass contingency tables (n x n).
+Started:    6-30-11 by Tim Supinie (tsupinie@ou.edu)
+Completed:  [not yet]
+Modified:   [not yet]
+"""
 
 class MultiContingencyTable(ContingencyTable):
     def __init__(self, size=None, data=None):
+        """
+        __init__()
+        Purpose:    Constructor for the MultiContingencyTable class.  Either initializes it as a blank size x size table (fills it with zeros) or fills it with the data provided.
+        Parameters: size [type=int]: The size of the table to create.
+                    data [type=np.array]: Data to fill the initial table with
+        """
         if data is None:
             if size is None:
                 print "Error!"

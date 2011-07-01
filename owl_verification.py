@@ -1,5 +1,6 @@
 from OWLShift import OWLShift
 from ASOS import ASOS
+from ContingencyTable import ProbContingencyTable
 from datetime import datetime,timedelta
 import os
 import re
@@ -135,13 +136,12 @@ def verifyPrecip(forecasts, observations, start_date, end_date):
 #            print ct
 #        print
         ct = precipContingencyTable(forecasts, observations, start_date, end_date, period=period)
-        reliability = ct[1] / ct.sum(axis=0)
 
         print "Period %s" % period
         print "Contingency Table:"
-        dump(ct)
+        print ct
         print "Reliability:"
-        dump(reliability)
+        dump(ct.getReliability())
         print
     return
 
@@ -182,9 +182,9 @@ def precipContingencyTable(forecasts, observations, start_date, end_date, statio
                     The shift to verify (e.g. 'Tue_Aft' for Tuesday Afternoon).  Not implemented yet.
                 period [type=string]
                     The period to verify (one of '1A', '1B', '2', '3', or '4').  Optional, defaults to '1A' if not given.
-    Returns:    The completed contingency table as a numpy array.
+    Returns:    The completed contingency table as a ProbContingencyTable object.
     """
-    contingency_table = np.zeros((2, 11), dtype=float)
+    contingency_table = ProbContingencyTable(size=11)
     total_forecasts = 0
 
     if period is None:
