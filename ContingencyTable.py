@@ -67,13 +67,15 @@ Modified:   [not yet]
 """
 
 class ProbContingencyTable(ContingencyTable):
-    def __init__(self, size=None, data=None):
+    def __init__(self, labels, size=None, data=None):
         """
         __init__()
         Purpose:    Constructor for the ProbContingencyTable class.  Either initializes it as a blank 2 x size table (fills it with zeros) or fills it with the data provided.
-        Parameters: size [type=int]: The size of the table to create.
+        Parameters: labels [type=np.array]:  Array of probability values.
+                    size [type=int]: The size of the table to create.
                     data [type=np.array]: Data to fill the initial table with
         """
+        self.labels = np.array(labels,dtype=float)
         if data is None:
             if size is None:
                 print "Error!"
@@ -94,6 +96,36 @@ class ProbContingencyTable(ContingencyTable):
         Returns:    Reliability diagram data as a numpy array.
         """
         return self.ct[1] / self.ct.sum(axis=0, dtype=float)
+    
+    def BrierScore(self,components=False):
+        """
+        BrierScore(components=False) [public]
+        Purpose:  Compute the Brier Score and its components: reliability, resolution, and uncertainty
+        Returns:  If components==False, returns Brier Score.  If components==True, returns a tuple of (BrierScore,reliability,resolution,uncertainty).
+        """
+        N = self.ct.sum(dtype=float)
+        num_forecasts = self.ct.sum(axis=0,dtype=float)
+        obs_freq = self.ct[1] / num_forecasts
+        obs_freq[np.nonzero(np.isnan(obs_freq))] = 0
+        climo = np.sum(self.ct[1]) / N
+        reliability = 1/N * np.sum(num_forecasts * (self.labels- obs_freq) ** 2)
+        resolution = 1/N * np.sum(num_forecasts * (obs_freq - climo) ** 2)
+        uncertainty = climo * ( 1 - climo)
+        BS = reliability - resolution + uncertainty
+        if components:
+            return BS,reliability,resolution,uncertainty
+        else:
+            return BS
+    def BrierSkillScore(self):
+        """
+        BrierSkillScore() [public]
+        Purpose:  Calculate the Brier Skill Score for probabilistic forecasts
+        Parameters:  None
+        Returns:  the Brier Skill Score as a float
+        """
+        BS,reliability,resolution,uncertainty = self.BrierScore(components=True)
+        return (resolution - reliability) / uncertainty
+
 
 """
 MultiContingencyTable
@@ -125,16 +157,16 @@ class MultiContingencyTable(ContingencyTable):
 
 if __name__ == "__main__":
     # Create a probability contingency table
-    prob_ct = ProbContingencyTable(size=11)
-
+    labels = np.arange(0,1.1,0.1)
+    prob_ct = ProbContingencyTable(labels,size=11)
     # Fill table with data
     prob_ct.fill(np.array(range(11 * 2)).reshape((2, 11)))
 
     # Modify a single element of the table
     prob_ct[0, 0] += 1
-
     print prob_ct
     print prob_ct.getReliability()
-
+    print prob_ct.BrierScore(components=True)
+    print prob_ct.BrierSkillScore()
     # Create a multicategory contingency table (improper size: will fail)
     mult_ct = MultiContingencyTable(data=np.array(range(3 * 3)).reshape(4, 3))

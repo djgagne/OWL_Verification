@@ -128,6 +128,7 @@ def verifyPrecip(forecasts, observations, start_date, end_date):
                     String containing the date of the end of the verification period (format is 'YYYYMMDD_HH:MM', same as in start_date).
     Returns:    [nothing ... yet]
     """
+    BSSs = []
     for period in OWLShift._forecast_days:
 #        for station in observations.keys():
 #            print "Day %s forecasts for station %s:" % (period, verif_to_fcst[station])
@@ -136,13 +137,19 @@ def verifyPrecip(forecasts, observations, start_date, end_date):
 #            print ct
 #        print
         ct = precipContingencyTable(forecasts, observations, start_date, end_date, period=period)
-
+        bs,reliability,resolution,uncertainty = ct.BrierScore(components=True)
+        BSS = ct.BrierSkillScore()
         print "Period %s" % period
         print "Contingency Table:"
         print ct
         print "Reliability:"
         dump(ct.getReliability())
+        print "Brier Score:  ",bs
+        print "Rel,Res,Unc:  ",reliability,resolution,uncertainty
+        print "Brier Skill Score:  ",BSS
         print
+        BSSs.append(BSS)
+    print BSSs
     return
 
 def dump(grid):
@@ -184,7 +191,8 @@ def precipContingencyTable(forecasts, observations, start_date, end_date, statio
                     The period to verify (one of '1A', '1B', '2', '3', or '4').  Optional, defaults to '1A' if not given.
     Returns:    The completed contingency table as a ProbContingencyTable object.
     """
-    contingency_table = ProbContingencyTable(size=11)
+    labels = np.arange(0,1.1,.1)
+    contingency_table = ProbContingencyTable(labels,size=11)
     total_forecasts = 0
 
     if period is None:
