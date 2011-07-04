@@ -123,6 +123,20 @@ def collectASOS(startDate,endDate,sites=None,asos_dir='verif_data/'):
             asos.update(startDate,endDate)
     return sites
 
+def verifyTemps(forecasts,observations,start_date,end_date):
+    """
+    verifyTemps()
+    Purpose:  Control function for temperature verification
+    Parameters:  forecasts [type=dictionary]
+                    Dictionary mapping shift days (e.g. 'Tue_Aft' for Tuesday Afternoon) to their OWLShift objects.
+
+    """
+    rmse = {}
+    for period in OWLShift._forecast_days:
+        rmse[period] = {}
+        for station in observations.keys():
+            
+
 def verifyPrecip(forecasts, observations, start_date, end_date):
     """
     verifyPrecip()
@@ -258,7 +272,7 @@ def setPeriodDates(date,shift):
                         (startDateTime + timedelta(days=3),startDateTime + timedelta(days=4)),
                         (startDateTime + timedelta(days=4),startDateTime + timedelta(days=5))]
     elif shift == 'Eve':
-        periodDates = [(startDateTime + timedelta(days=1,hours=0),startDateTime + timedelta(hours=18)),
+        periodDates = [(startDateTime + timedelta(days=1,hours=0),startDateTime + timedelta(days=1,hours=18)),
                         (startDateTime + timedelta(days=1,hours=18),startDateTime + timedelta(days=2,hours=6)),
                         (startDateTime + timedelta(days=2),startDateTime + timedelta(days=3)),
                         (startDateTime + timedelta(days=3),startDateTime + timedelta(days=4)),
