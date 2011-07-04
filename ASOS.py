@@ -39,7 +39,7 @@ class ASOS:
                 self.datatype.append((item,float))
         self.data = np.array(data,dtype=self.datatype)
     
-    def getDataValues(self,startDate,endDate,variable):
+    def getDataValues(self,startDate,endDate,variable,filter=True):
         """ getDataValues(startDate,endDate,variable)
             Purpose:  Retrieve values over a particular time range.
             Parameters:
@@ -47,7 +47,10 @@ class ASOS:
                 endDate:  date string for end of period of interest
                 variable:  variable to be extracted.
         """
-        dateIdxs = np.nonzero(np.logical_and(self.data['time'] >= startDate,self.data['time'] <= endDate))
+        if filter:
+            dateIdxs = np.nonzero((self.data['time'] >= startDate) & (self.data['time'] <= endDate) & (self.data[variable] > -990))
+        else:
+            dateIdxs = np.nonzero((self.data['time'] >= startDate) & (self.data['time'] <= endDate))
         return self.data[variable][dateIdxs]
 
     def getHighTemps(self,startDates,endDates):
@@ -77,7 +80,7 @@ class ASOS:
         lowTemps = []
         for idx in xrange(len(startDates)):
             temps = self.getDataValues(self,startDates[idx],endDates[idx],'tmpf')
-            lowTemps.append(np.min(temps[np.nonzero(temps > -990)]))
+            lowTemps.append(np.min(temps))
         return np.array(lowTemps,dtype=float)
 
     def getPrecip(self, startDates, endDates):
@@ -92,6 +95,8 @@ class ASOS:
         precip = []
         for idx in xrange(len(startDates)):
             precip1hr = self.getDataValues(startDates[idx], endDates[idx], 'p01m')
+#           if self.site == "ADM" and startDates[idx][-5:] == "10:00" and endDates[idx][-5:] == "18:00":
+#               print startDates[idx], endDates[idx], precip1hr
             precip.append(precip1hr.sum() > 0)
         return np.array(precip, dtype=bool)
 

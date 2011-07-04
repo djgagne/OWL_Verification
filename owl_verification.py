@@ -43,14 +43,30 @@ def main():
         pickle.dump(shifts,open(args.owlpickle,'w'))
         pickle.dump(asos_sites,open(args.asospickle,'w'))
 
-    scores = verifyPrecip(shifts, asos_sites, args.start, args.end)
+    morning_shifts = {}
+    afternoon_shifts = {}
+    evening_shifts = {}
 
+    for shift_time, fcsts in shifts.iteritems():
+        if shift_time[-3:] == "Mor":
+            morning_shifts[shift_time] = fcsts
+        if shift_time[-3:] == "Aft":
+            afternoon_shifts[shift_time] = fcsts
+        if shift_time[-3:] == "Eve":
+            evening_shifts[shift_time] = fcsts
+
+    scores = verifyPrecip(shifts, asos_sites, args.start, args.end)
+    morning_scores = verifyPrecip(morning_shifts, asos_sites, args.start, args.end)
+    afternoon_scores = verifyPrecip(afternoon_shifts, asos_sites, args.start, args.end)
+    evening_scores = verifyPrecip(evening_shifts, asos_sites, args.start, args.end)
+
+    print "Overall Verification Scores"
     station_list = asos_sites.keys()
     for period in OWLShift._forecast_days:
         print "BSS's for period %s:" % period
         print "All stations: %f" % scores[period]['all']
         for station in station_list:
-            print "%s: %f" % (station, scores[period][station])
+            print "%s: %2.2f %2.2f %2.2f %2.2f" % (verif_to_fcst[station], scores[period][station], morning_scores[period][station], afternoon_scores[period][station], evening_scores[period][station])
         print
 
     return
@@ -241,6 +257,11 @@ def precipContingencyTable(forecasts, observations, start_date, end_date, statio
             shift_start_times, shift_end_times = pprb[:2]
 
             precip_obs = observations[stn].getPrecip(shift_start_times, shift_end_times)
+
+#           if shift_name[-3:] == "Mor" and stn == "ADM":
+#               print "Shift starts:", shift_start_times
+#               print "Shift ends:", shift_end_times
+#               print "Obs:", precip_obs
 
             for idx in range(len(precip_obs)):
                 contingency_table[precip_obs[idx], pprb[2][idx] / 10] += 1
