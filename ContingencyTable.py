@@ -136,13 +136,15 @@ Modified:   [not yet]
 """
 
 class MultiContingencyTable(ContingencyTable):
-    def __init__(self, size=None, data=None):
+    def __init__(self, labels,size=None, data=None):
         """
         __init__()
-        Purpose:    Constructor for the MultiContingencyTable class.  Either initializes it as a blank size x size table (fills it with zeros) or fills it with the data provided.
-        Parameters: size [type=int]: The size of the table to create.
+        Purpose:    Constructor for the MultiContingencyTable class.  Either initializes it as a blank size x size table (fills it with zeros) or fills it with the data provided.  Observed categories are the columns and forecast categories are the rows.
+        Parameters: labels [type=np.array]:  Labels for each item being forecasted and verified.
+                    size [type=int]: The size of the table to create.
                     data [type=np.array]: Data to fill the initial table with
         """
+        self.labels = labels
         if data is None:
             if size is None:
                 print "Error!"
@@ -154,6 +156,36 @@ class MultiContingencyTable(ContingencyTable):
 
             self.ct = data
         return
+
+    def HeidkeSkillScore(self):
+        """
+        HeidkeSkillScore() [public]
+        Purpose:  Calculate the multiclass Heidke Skill Score
+        Returns:  the Heidke Skill Score
+        """
+        N = self.ct.sum(dtype=float)
+        NO = self.ct.sum(axis=0)
+        NF = self.ct.sum(axis=1)
+        n_diag = 0
+        for i in xrange(self.ct.shape[0]):
+            n_diag += self.ct[i,i]
+        HSS = (1/N * n_diag - 1/N**2 * np.sum(NO * NF)) / ( 1 - 1/N**2 * np.sum(NF * NO))
+        return HSS
+    
+    def PeirceSkillScore(self):
+        """
+        PeirceSkillScore() [public]
+        Purpose:  Calculate the multiclass Peirce (a.k.a. Hanssen and Kuipers, true skill statistic)
+        Returns:  The Peirce Skill Score
+        """
+        N = self.ct.sum(dtype=float)
+        NO = self.ct.sum(axis=0)
+        NF = self.ct.sum(axis=1)
+        n_diag = 0
+        for i in xrange(self.ct.shape[0]):
+            n_diag += self.ct[i,i]
+        PSS = (1/N * n_diag - 1/N**2 * np.sum(NO * NF)) / ( 1 - 1/N**2 * np.sum(NO**2))
+        return PSS
 
 if __name__ == "__main__":
     # Create a probability contingency table
@@ -169,4 +201,9 @@ if __name__ == "__main__":
     print prob_ct.BrierScore(components=True)
     print prob_ct.BrierSkillScore()
     # Create a multicategory contingency table (improper size: will fail)
-    mult_ct = MultiContingencyTable(data=np.array(range(3 * 3)).reshape(4, 3))
+    labels = np.array(['Yes','No','Maybe'],dtype='S6')
+    mult_ct = MultiContingencyTable(labels,data=np.array([0]*9).reshape(3, 3))
+    for i in xrange(3):
+        mult_ct.ct[i,i] += 2
+    print mult_ct.HeidkeSkillScore()
+    print mult_ct.PeirceSkillScore()
