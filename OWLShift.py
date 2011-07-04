@@ -51,17 +51,18 @@ class OWLShift:
             Returns:
                 A tuple of arrays with the first array containing the start verifying dates/times, the second array containing the end verifying dates/times, and the third array containing the variable values.
         """
-        
-        if filter == False:
-            siteIdxs = np.nonzero(np.logical_and(np.logical_and(getattr(self,'day' + forecastDay)['SDATE'] >= startDate,getattr(self,'day'+forecastDay)['EDATE'] <= endDate),getattr(self,'day'+forecastDay)['SITE']==site))
-        else:
-            siteIdxs = np.nonzero(np.logical_and(np.logical_and(
-                np.logical_and(getattr(self,'day' + forecastDay)['SDATE'] >= startDate,
-                getattr(self, 'day' + forecastDay)['EDATE']  <= endDate),
-                getattr(self, 'day' + forecastDay)['SITE']   == site),
-                getattr(self, 'day' + forecastDay)[variable] >  -900))
 
-        return (getattr(self, 'day' + forecastDay)['SDATE'][siteIdxs], getattr(self, 'day' + forecastDay)['EDATE'][siteIdxs], getattr(self, 'day' + forecastDay)[variable][siteIdxs])
+        forecasts = getattr(self, 'day' + forecastDay)        
+
+        if filter == False:
+            siteIdxs = np.nonzero((forecasts['SDATE'] >= startDate) & (forecasts['EDATE'] <= endDate) & (forecasts['SITE']==site))
+        else:
+            siteIdxs = np.nonzero((forecasts['SDATE'] >= startDate) & (forecasts['EDATE'] <= endDate) &
+                (forecasts['SITE']   == site) &
+                (forecasts[variable] >  -900) &
+                ((forecasts['TMPH'] > -900) | (forecasts['TMPL'] > -900)))
+
+        return (forecasts['SDATE'][siteIdxs], forecasts['EDATE'][siteIdxs], forecasts[variable][siteIdxs])
 
 if __name__ == "__main__":
     import cPickle as pickle

@@ -43,7 +43,16 @@ def main():
         pickle.dump(shifts,open(args.owlpickle,'w'))
         pickle.dump(asos_sites,open(args.asospickle,'w'))
 
-    verifyPrecip(shifts, asos_sites, args.start, args.end)
+    scores = verifyPrecip(shifts, asos_sites, args.start, args.end)
+
+    station_list = asos_sites.keys()
+    for period in OWLShift._forecast_days:
+        print "BSS's for period %s:" % period
+        print "All stations: %f" % scores[period]['all']
+        for station in station_list:
+            print "%s: %f" % (station, scores[period][station])
+        print
+
     return
 
 def collectForecasts(shifts,startDate,endDate,forecastDir='fcst/'):
@@ -128,29 +137,37 @@ def verifyPrecip(forecasts, observations, start_date, end_date):
                     String containing the date of the end of the verification period (format is 'YYYYMMDD_HH:MM', same as in start_date).
     Returns:    [nothing ... yet]
     """
-    BSSs = []
+    brier_skill_scores = {}
+
     for period in OWLShift._forecast_days:
-#        for station in observations.keys():
-#            print "Day %s forecasts for station %s:" % (period, verif_to_fcst[station])
-#            ct = precipContingencyTable(forecasts, observations, start_date, end_date, stations=station, period=period)
-#            reliability = ct[1] / ct.sum(axis=0)
-#            print ct
-#        print
+        brier_skill_scores[period] = {}
+
+        print "Period %s" % period
+        for station in observations.keys():
+            print "Day %s forecasts for station %s:" % (period, verif_to_fcst[station])
+            ct = precipContingencyTable(forecasts, observations, start_date, end_date, stations=station, period=period)
+            BSS = ct.BrierSkillScore()
+            print "Contingency Table:"
+            print ct
+            print "Brier Skill Score: ", BSS
+            print
+
+            brier_skill_scores[period][station] = BSS
+
         ct = precipContingencyTable(forecasts, observations, start_date, end_date, period=period)
         bs,reliability,resolution,uncertainty = ct.BrierScore(components=True)
         BSS = ct.BrierSkillScore()
-        print "Period %s" % period
+
         print "Contingency Table:"
         print ct
-        print "Reliability:"
-        dump(ct.getReliability())
-        print "Brier Score:  ",bs
-        print "Rel,Res,Unc:  ",reliability,resolution,uncertainty
-        print "Brier Skill Score:  ",BSS
+        print "Brier Score: ", bs
+        print "Reliability, Resolution, Uncertainty: ", reliability, resolution, uncertainty
+        print "Brier Skill Score: ", BSS
         print
-        BSSs.append(BSS)
-    print BSSs
-    return
+
+        brier_skill_scores[period]['all'] = BSS
+
+    return brier_skill_scores
 
 def dump(grid):
     """
