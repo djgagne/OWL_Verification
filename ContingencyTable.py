@@ -186,7 +186,71 @@ class MultiContingencyTable(ContingencyTable):
             n_diag += self.ct[i,i]
         PSS = (1/N * n_diag - 1/N**2 * np.sum(NO * NF)) / ( 1 - 1/N**2 * np.sum(NO**2))
         return PSS
+"""
+ContinuousContingencyTable
+Purpose:  Stores forecast and observed values for continuous variables.
+"""
+class ContinuousContingencyTable(ContingencyTable):
 
+    def __init__(self,forecasts,observations):
+        """
+        __init__()
+        Purpose:  Constructor for ContinuousContingencyTable class
+        Parameters:
+            forecasts [type=np.array]:  Array of forecast values
+            observations [type=np.array]:  Array of observed values.  Must be same size as forecasts.
+        """
+        self.forecasts = forecasts
+        self.observations = observations
+        if self.forecasts.shape != self.observations.shape:
+            print "Error!"
+        goodIdxs = np.nonzero(self.observations>-998)
+        self.errors = self.forecasts[goodIdxs] - self.observations[goodIdxs]
+    
+    def addPairs(self,forecasts,observations):
+        """
+        addPairs() [public]
+        Purpose:  Add additional forecast and observation pairs
+        Parameters:
+            forecasts [type=np.array]:  Array of additional forecasts.
+            observations [type=np.array]:  Array of additional observations.
+        Returns:  None
+        """
+        if forecasts.shape == observations.shape:
+            self.forecasts = np.append(self.forecasts,forecasts)
+            self.observations = np.append(self.observations,observations)
+            goodIdxs = np.nonzero(self.observations>-998)
+            self.errors = self.forecasts[goodIdxs] - self.observations[goodIdxs]
+        else:
+            print "Error!  Forecasts and observations do not match."
+    
+    def MeanError(self):
+        """
+        MeanError() [public]
+        Purpose:  Calculate the mean error, aka bias.
+        Parameters:
+            None
+        Returns:  the mean error
+        """
+        return self.errors.mean()
+    
+    def MeanAbsoluteError(self):
+        """
+        MeanAbsoluteError() [public]
+        Purpose:  Calculate the mean absolute error.
+        Parameters:
+            None
+        Returns:  the mean absolute error
+        """
+        return np.abs(self.errors).mean()
+
+    def RootMeanSquareError(self):
+        """
+        RootMeanSquareError() [public]
+        Purpose:  Calculate the root mean square error
+        Returns:  the root mean square error
+        """
+        return np.sqrt(np.power(self.errors,2).mean())
 if __name__ == "__main__":
     # Create a probability contingency table
     labels = np.arange(0,1.1,0.1)
@@ -207,3 +271,8 @@ if __name__ == "__main__":
         mult_ct.ct[i,i] += 2
     print mult_ct.HeidkeSkillScore()
     print mult_ct.PeirceSkillScore()
+
+    cont_ct = ContinuousContingencyTable(np.array([1,2,3]),np.array([4,5,6]))
+    print cont_ct.forecasts,cont_ct.observations,cont_ct.errors
+    cont_ct.addPairs(np.array([8,4]),np.array([7,3]))
+    print cont_ct.errors

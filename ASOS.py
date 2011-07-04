@@ -39,7 +39,7 @@ class ASOS:
                 self.datatype.append((item,float))
         self.data = np.array(data,dtype=self.datatype)
     
-    def getDataValues(self,startDate,endDate,variable,filter=True):
+    def getDataValues(self,startDate,endDate,variable,dataFilter=True):
         """ getDataValues(startDate,endDate,variable)
             Purpose:  Retrieve values over a particular time range.
             Parameters:
@@ -47,7 +47,7 @@ class ASOS:
                 endDate:  date string for end of period of interest
                 variable:  variable to be extracted.
         """
-        if filter:
+        if dataFilter:
             dateIdxs = np.nonzero((self.data['time'] >= startDate) & (self.data['time'] <= endDate) & (self.data[variable] > -990))
         else:
             dateIdxs = np.nonzero((self.data['time'] >= startDate) & (self.data['time'] <= endDate))
@@ -64,8 +64,11 @@ class ASOS:
             """
         highTemps = []
         for idx in xrange(len(startDates)):
-            temps = self.getDataValues(self,startDates[idx],endDates[idx],'tmpf')
-            highTemps.append(np.max(temps))
+            temps = self.getDataValues(startDates[idx],endDates[idx],'tmpf')
+            if len(temps) > 0:
+                highTemps.append(np.max(temps))
+            else:
+                highTemps.append(-998)
         return np.array(highTemps,dtype=float)
 
     def getLowTemps(self,startDates,endDates):
@@ -79,8 +82,11 @@ class ASOS:
         """
         lowTemps = []
         for idx in xrange(len(startDates)):
-            temps = self.getDataValues(self,startDates[idx],endDates[idx],'tmpf')
-            lowTemps.append(np.min(temps))
+            temps = self.getDataValues(startDates[idx],endDates[idx],'tmpf')
+            if len(temps) > 0:
+                lowTemps.append(np.min(temps))
+            else:
+                lowTemps.append(-998)
         return np.array(lowTemps,dtype=float)
 
     def getPrecip(self, startDates, endDates):
@@ -108,6 +114,6 @@ def main():
         d = ASOS(site,startDate,endDate)
         print d.data[0]
         print d.getDataValues('20100510_02:00','20100510_23:00','p01m')
-
+        print d.getHighTemps(['20100510_02:00'],['20100510_23:00'])
 if __name__=="__main__":
     main()

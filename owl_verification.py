@@ -1,6 +1,6 @@
 from OWLShift import OWLShift
 from ASOS import ASOS
-from ContingencyTable import ProbContingencyTable
+from ContingencyTable import ProbContingencyTable,ContinuousContingencyTable
 from datetime import datetime,timedelta
 import os
 import re
@@ -19,13 +19,14 @@ fcst_to_verif = {'KGUY':'GUY', 'KWWR':'WWR', 'KCSM':'CLK', 'KLTS':'LTS', 'KLAW':
 
 def main():
     parser = argparse.ArgumentParser(description='Load and match forecasts and observed data.')
-    parser.add_argument('--start',default='20090901',help='Start verification date in the format YYYYMMDD')
+    parser.add_argument('--start',default='20090910',help='Start verification date in the format YYYYMMDD')
     parser.add_argument('--end',default='20110509',help='End verification date in the format YYYYMMDD')
     parser.add_argument('--update',action='store_true',help='Load data from pickle files and add any new data from files.')
     parser.add_argument('--frompickle',action='store_true', help='Load data from a pickle file.')
     parser.add_argument('--owlpickle',default='owl_shift_forecasts.pkl',help='Specify name of OWL forecast file.')
     parser.add_argument('--asospickle',default='asos_sites.pkl',help='Specify name of ASOS sites file')
-
+    parser.add_argument('--precip',action='store_true', help='Run precip verification')
+    parser.add_argument('--temps',action='store_true', help='Run temperature verification')
     args = parser.parse_args()
     if args.update or args.frompickle:
         shifts = pickle.load(open(args.owlpickle))
@@ -54,21 +55,23 @@ def main():
             afternoon_shifts[shift_time] = fcsts
         if shift_time[-3:] == "Eve":
             evening_shifts[shift_time] = fcsts
+    if args.precip:
+        scores = verifyPrecip(shifts, asos_sites, args.start, args.end)
+        morning_scores = verifyPrecip(morning_shifts, asos_sites, args.start, args.end)
+        afternoon_scores = verifyPrecip(afternoon_shifts, asos_sites, args.start, args.end)
+        evening_scores = verifyPrecip(evening_shifts, asos_sites, args.start, args.end)
 
-    scores = verifyPrecip(shifts, asos_sites, args.start, args.end)
-    morning_scores = verifyPrecip(morning_shifts, asos_sites, args.start, args.end)
-    afternoon_scores = verifyPrecip(afternoon_shifts, asos_sites, args.start, args.end)
-    evening_scores = verifyPrecip(evening_shifts, asos_sites, args.start, args.end)
-
-    print "Overall Verification Scores"
-    station_list = asos_sites.keys()
-    for period in OWLShift._forecast_days:
-        print "BSS's for period %s:" % period
-        print "All stations: %f" % scores[period]['all']
-        for station in station_list:
-            print "%s: %2.2f %2.2f %2.2f %2.2f" % (verif_to_fcst[station], scores[period][station], morning_scores[period][station], afternoon_scores[period][station], evening_scores[period][station])
-        print
-
+        print "Overall Verification Scores"
+        station_list = asos_sites.keys()
+        for period in OWLShift._forecast_days:
+            print "BSS's for period %s:" % period
+            print "All stations: %f" % scores[period]['all']
+            for station in station_list:
+                print "%s: %2.2f %2.2f %2.2f %2.2f" % (verif_to_fcst[station], scores[period][station], morning_scores[period][station], afternoon_scores[period][station], evening_scores[period][station])
+                print
+    
+    if args.temps:
+        verifyTemps(shifts, asos_sites,args.start,args.end)
     return
 
 def collectForecasts(shifts,startDate,endDate,forecastDir='fcst/'):
@@ -148,10 +151,24 @@ def verifyTemps(forecasts,observations,start_date,end_date):
 
     """
     rmse = {}
+    all_obs = observations.keys()
+    all_obs.remove('LTS')
     for period in OWLShift._forecast_days:
         rmse[period] = {}
-        for station in observations.keys():
+        for station in all_obs:
+            H_ct = tempContingencyTable(forecasts, observations, start_date, end_date, temp="H",stations=station, period=period)
+            L_ct = tempContingencyTable(forecasts, observations, start_date, end_date, temp="L",stations=station, period=period)
+            print station, period
+            print "High Temperature:"
+            print "ME:   ",H_ct.MeanError()
+            print "MAE:  ",H_ct.MeanAbsoluteError()
+            print "RMSE: ",H_ct.RootMeanSquareError()
             
+            print "Low Temperature:"
+            print "ME:   ",L_ct.MeanError()
+            print "MAE:  ",L_ct.MeanAbsoluteError()
+            print "RMSE: ",L_ct.RootMeanSquareError()
+               
 
 def verifyPrecip(forecasts, observations, start_date, end_date):
     """
@@ -275,6 +292,52 @@ def splitLine(line,width=5):
     for i in xrange(width,len(line[:-1])+width,width):
         lineList.append(line[i-width:i].strip())
     return lineList
+
+def tempContingencyTable(forecasts, observations, start_date, end_date, temp="H", stations=None, shift=None, period=None):
+    """
+    precipContingencyTable()
+    Purpose:    Produce a continuous contingency table containing all the temperature forecasts for the period.
+    Parameters: forecasts [type=dictionary]
+                    Dictionary mapping shift days (e.g. 'Tue_Aft' for Tuesday Afternoon) to their OWLShift objects.
+                observations [type=dictionary]
+                    Dictionary mapping observation points (e.g. 'OUN' for Norman) to their ASOS objects.
+                start_date [type=string]
+                    String containing the date of the start of the verification period (format is 'YYYYMMDD_HH:MM').
+                end_date [type=string]
+                    String containing the date of the end of the verification period (format is 'YYYYMMDD_HH:MM', same as in start_date).
+                temp [type=string]
+                    String telling whether the high or low temperature is being evaluated.  "H" for high and "L" for low.
+                stations [type=list,tuple,string]
+                    A station or list of stations to include in the contingency table.  Optional, defaults to KOUN if not given.
+                shift [type=string]
+                    The shift to verify (e.g. 'Tue_Aft' for Tuesday Afternoon).  Not implemented yet.
+                period [type=string]
+                    The period to verify (one of '1A', '1B', '2', '3', or '4').  Optional, defaults to '1A' if not given.
+    Returns:    The completed contingency table as a ContinuousContingencyTable object.
+    """
+    temp_ct = ContinuousContingencyTable(np.array([]),np.array([]))
+    if period is None:
+        period = OWLShift._forecast_days[0]
+
+    if stations is None:
+        stations = observations.keys()
+    elif type(stations) not in [ list, tuple ]:
+        stations = [ stations ]
+
+    for shift_name, shift_data in forecasts.iteritems():
+        for stn in stations:
+            if temp.upper()=="H":
+                temp_fcasts = shift_data.getForecasts(period, start_date, end_date, "TMPH", verif_to_fcst[stn])
+            else:
+                temp_fcasts = shift_data.getForecasts(period, start_date, end_date, "TMPL", verif_to_fcst[stn])
+            
+            shift_start_times, shift_end_times = temp_fcasts[:2]
+            if temp.upper()=="H":
+                temp_obs = observations[stn].getHighTemps(shift_start_times,shift_end_times)
+            else:
+                temp_obs = observations[stn].getLowTemps(shift_start_times,shift_end_times)
+            temp_ct.addPairs(temp_fcasts[2],temp_obs)
+    return temp_ct
 
 def setPeriodDates(date,shift):
     """setPeriodDates
