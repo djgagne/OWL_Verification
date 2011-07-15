@@ -1,6 +1,7 @@
 from OWLShift import OWLShift
 from ASOS import ASOS
 from ContingencyTable import ProbContingencyTable,ContinuousContingencyTable
+from OWLOutput import OWLOutput
 from datetime import datetime,timedelta
 import os
 import re
@@ -27,6 +28,7 @@ def main():
     parser.add_argument('--asospickle',default='asos_sites.pkl',help='Specify name of ASOS sites file')
     parser.add_argument('--precip',action='store_true', help='Run precip verification')
     parser.add_argument('--temps',action='store_true', help='Run temperature verification')
+    parser.add_argument('--out',help='Output file for verification data.')
     args = parser.parse_args()
     if args.update or args.frompickle:
         shifts = pickle.load(open(args.owlpickle))
@@ -71,7 +73,18 @@ def main():
                 print
     
     if args.temps:
-        verifyTemps(shifts, asos_sites,args.start,args.end)
+        temp_out = OWLOutput(header=['ME','MAE','RMSE'])
+        station_list = asos_sites.keys()
+        station_list.sort()
+        me,mae,rmse = verifyTemps(shifts, asos_sites,args.start,args.end)
+        for period in OWLShift._forecast_days:
+            print 'Day ' + period
+            for station in station_list:
+                print '%s: H:  %2.2f  L:  %2.2f' % (verif_to_fcst[station], rmse[period][station]['H'],rmse[period][station]['L'])
+                for t in ['H','L']:
+                    entry = ['TMP' + t,period,station,args.start,args.end,'ALL','ALL',me[period][station][t],mae[period][station][t],rmse[period][station][t]]
+                    temp_out.addEntry(*entry)
+        temp_out.toCSV(args.out)
     return
 
 def collectForecasts(shifts,startDate,endDate,forecastDir='fcst/'):
@@ -150,25 +163,23 @@ def verifyTemps(forecasts,observations,start_date,end_date):
                     Dictionary mapping shift days (e.g. 'Tue_Aft' for Tuesday Afternoon) to their OWLShift objects.
 
     """
+    me = {}
+    mae = {}
     rmse = {}
     all_obs = observations.keys()
-    all_obs.remove('LTS')
+    all_obs.sort()
     for period in OWLShift._forecast_days:
         rmse[period] = {}
+        mae[period] = {}
+        me[period] = {}
         for station in all_obs:
             H_ct = tempContingencyTable(forecasts, observations, start_date, end_date, temp="H",stations=station, period=period)
             L_ct = tempContingencyTable(forecasts, observations, start_date, end_date, temp="L",stations=station, period=period)
             print station, period
-            print "High Temperature:"
-            print "ME:   ",H_ct.MeanError()
-            print "MAE:  ",H_ct.MeanAbsoluteError()
-            print "RMSE: ",H_ct.RootMeanSquareError()
-            
-            print "Low Temperature:"
-            print "ME:   ",L_ct.MeanError()
-            print "MAE:  ",L_ct.MeanAbsoluteError()
-            print "RMSE: ",L_ct.RootMeanSquareError()
-               
+            rmse[period][station] = dict(H=H_ct.RootMeanSquareError(),L=L_ct.RootMeanSquareError()) 
+            mae[period][station] = dict(H=H_ct.MeanAbsoluteError(),L=L_ct.MeanAbsoluteError())
+            me[period][station] = dict(H=H_ct.MeanError(),L=L_ct.MeanError())
+    return me,mae,rmse
 
 def verifyPrecip(forecasts, observations, start_date, end_date):
     """
