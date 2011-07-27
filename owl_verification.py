@@ -345,9 +345,13 @@ def tempContingencyTable(forecasts, observations, start_date, end_date, temp="H"
             shift_start_times, shift_end_times = temp_fcasts[:2]
             if temp.upper()=="H":
                 temp_obs = observations[stn].getHighTemps(shift_start_times,shift_end_times)
+                high_idxs = np.nonzero(temp_obs > 150)
+                if len(high_idxs[0]) > 0:
+                    print shift_start_times[high_idxs],temp_obs[high_idxs]
             else:
                 temp_obs = observations[stn].getLowTemps(shift_start_times,shift_end_times)
             temp_ct.addPairs(temp_fcasts[2],temp_obs)
+            
     return temp_ct
 
 def setPeriodDates(date,shift):

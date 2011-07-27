@@ -53,7 +53,7 @@ class ASOS:
             dateIdxs = np.nonzero((self.data['time'] >= startDate) & (self.data['time'] <= endDate))
         return self.data[variable][dateIdxs]
 
-    def getHighTemps(self,startDates,endDates):
+    def getHighTemps(self,startDates,endDates,valid_range = (-40,140)):
         """ getHighTemps(startDates,endDates)
             Purpose:  Retrieve high temperatures for given starting and ending dates
             Parameters:
@@ -65,8 +65,10 @@ class ASOS:
         highTemps = []
         for idx in xrange(len(startDates)):
             temps = self.getDataValues(startDates[idx],endDates[idx],'tmpf')
+             
             if len(temps) > 0:
-                highTemps.append(np.max(temps))
+                valid_idxs = np.nonzero((temps >= valid_range[0]) & (temps <= valid_range[1]))
+                highTemps.append(np.max(temps[valid_idxs]))
             else:
                 highTemps.append(-998)
         return np.array(highTemps,dtype=float)

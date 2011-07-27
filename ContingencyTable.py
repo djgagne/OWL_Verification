@@ -192,7 +192,7 @@ Purpose:  Stores forecast and observed values for continuous variables.
 """
 class ContinuousContingencyTable(ContingencyTable):
 
-    def __init__(self,forecasts,observations):
+    def __init__(self,forecasts,observations,valid_range=(-50.0,120.0)):
         """
         __init__()
         Purpose:  Constructor for ContinuousContingencyTable class
@@ -202,9 +202,10 @@ class ContinuousContingencyTable(ContingencyTable):
         """
         self.forecasts = forecasts
         self.observations = observations
+        self.valid_range = valid_range
         if self.forecasts.shape != self.observations.shape:
             print "Error!"
-        goodIdxs = np.nonzero(self.observations>-998)
+        goodIdxs = np.nonzero((self.observations>=self.valid_range[0]) & (self.observations <= self.valid_range[1]))
         self.errors = self.forecasts[goodIdxs] - self.observations[goodIdxs]
     
     def addPairs(self,forecasts,observations):
@@ -219,7 +220,7 @@ class ContinuousContingencyTable(ContingencyTable):
         if forecasts.shape == observations.shape:
             self.forecasts = np.append(self.forecasts,forecasts)
             self.observations = np.append(self.observations,observations)
-            goodIdxs = np.nonzero(self.observations>-998)
+            goodIdxs = np.nonzero((self.observations>=self.valid_range[0]) & (self.observations <= self.valid_range[1]))
             self.errors = self.forecasts[goodIdxs] - self.observations[goodIdxs]
         else:
             print "Error!  Forecasts and observations do not match."
