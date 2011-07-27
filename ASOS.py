@@ -91,6 +91,45 @@ class ASOS:
                 lowTemps.append(-998)
         return np.array(lowTemps,dtype=float)
 
+    def getMaxWinds(self,startDates,endDates):
+        """ getMaxWinds(startDates,endDates)
+            Purpose:  Retrieve maximum wind speeds for given starting and ending dates
+            Parameters:
+                startDates:  array of starting date strings for each forecast period
+                endDates:  array of ending date strings for each forecast period
+            Returns:
+                Array of max wind speeds corresponding to the periods in startDates and endDates
+            """
+        maxWinds = []
+        for idx in xrange(len(startDates)):
+            winds = self.getDataValues(startDates[idx],endDates[idx],'sknt')
+            if len(winds) > 0:
+                #print np.max(winds)*1.15077945
+                maxWinds.append(np.max(winds)*1.15077945)
+            else:
+                maxWinds.append(-998)
+        return np.array(maxWinds,dtype=float)
+
+    def getMinWinds(self,startDates,endDates):
+        """ getMinWinds(startDates,endDates)
+            Purpose:  Retrieve minimum wind speeds for given starting and ending dates
+            Parameters:
+                startDates:  array of starting date strings for each forecast period
+                endDates:  array of ending date strings for each forecast period
+            Returns:
+                Array of min wind speeds corresponding to the periods in startDates and endDates
+            """
+        minWinds = []
+        for idx in xrange(len(startDates)):
+            winds = self.getDataValues(startDates[idx],endDates[idx],'sknt')
+            if len(winds) > 0:
+                minWinds.append(np.min(winds)*1.15077945)
+                #print np.min(winds)*1.15077945
+            else:
+                minWinds.append(-998)
+        return np.array(minWinds,dtype=float)
+
+
     def getPrecip(self, startDates, endDates):
         """ getPrecip(startDates,endDates)
             Purpose:  Retrieve precipitation between the given start and end dates.
