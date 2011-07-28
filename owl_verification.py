@@ -1,6 +1,7 @@
 from OWLShift import OWLShift
 from ASOS import ASOS
 from ContingencyTable import ProbContingencyTable,ContinuousContingencyTable
+from OWLOutput import OWLOutput
 from datetime import datetime,timedelta
 import os
 import re
@@ -27,6 +28,8 @@ def main():
     parser.add_argument('--asospickle',default='asos_sites.pkl',help='Specify name of ASOS sites file')
     parser.add_argument('--precip',action='store_true', help='Run precip verification')
     parser.add_argument('--temps',action='store_true', help='Run temperature verification')
+    parser.add_argument('--winds',action='store_true', help='Run wind verification')
+    parser.add_argument('--out',help='Output file for verification data.')
     args = parser.parse_args()
     if args.update or args.frompickle:
         shifts = pickle.load(open(args.owlpickle))
@@ -70,9 +73,23 @@ def main():
             for station in station_list:
                 print "%s: %2.2f %2.2f %2.2f %2.2f" % (verif_to_fcst[station], scores[period][station], morning_scores[period][station], afternoon_scores[period][station], evening_scores[period][station])
             print
+
+    if args.winds:
+        verifyWinds(shifts, asos_sites, args.start, args.end)
     
     if args.temps:
-        verifyTemps(shifts, asos_sites,args.start,args.end)
+        temp_out = OWLOutput(header=['ME','MAE','RMSE'])
+        station_list = asos_sites.keys()
+        station_list.sort()
+        me,mae,rmse = verifyTemps(shifts, asos_sites,args.start,args.end)
+        for period in OWLShift._forecast_days:
+            print 'Day ' + period
+            for station in station_list:
+                print '%s: H:  %2.2f  L:  %2.2f' % (verif_to_fcst[station], rmse[period][station]['H'],rmse[period][station]['L'])
+                for t in ['H','L']:
+                    entry = ['TMP' + t,period,station,args.start,args.end,'ALL','ALL',me[period][station][t],mae[period][station][t],rmse[period][station][t]]
+                    temp_out.addEntry(*entry)
+        temp_out.toCSV(args.out)
     return
 
 def collectForecasts(shifts,startDate,endDate,forecastDir='fcst/'):
@@ -151,25 +168,23 @@ def verifyTemps(forecasts,observations,start_date,end_date):
                     Dictionary mapping shift days (e.g. 'Tue_Aft' for Tuesday Afternoon) to their OWLShift objects.
 
     """
+    me = {}
+    mae = {}
     rmse = {}
     all_obs = observations.keys()
-    all_obs.remove('LTS')
+    all_obs.sort()
     for period in OWLShift._forecast_days:
         rmse[period] = {}
+        mae[period] = {}
+        me[period] = {}
         for station in all_obs:
             H_ct = tempContingencyTable(forecasts, observations, start_date, end_date, temp="H",stations=station, period=period)
             L_ct = tempContingencyTable(forecasts, observations, start_date, end_date, temp="L",stations=station, period=period)
             print station, period
-            print "High Temperature:"
-            print "ME:   ",H_ct.MeanError()
-            print "MAE:  ",H_ct.MeanAbsoluteError()
-            print "RMSE: ",H_ct.RootMeanSquareError()
-            
-            print "Low Temperature:"
-            print "ME:   ",L_ct.MeanError()
-            print "MAE:  ",L_ct.MeanAbsoluteError()
-            print "RMSE: ",L_ct.RootMeanSquareError()
-               
+            rmse[period][station] = dict(H=H_ct.RootMeanSquareError(),L=L_ct.RootMeanSquareError()) 
+            mae[period][station] = dict(H=H_ct.MeanAbsoluteError(),L=L_ct.MeanAbsoluteError())
+            me[period][station] = dict(H=H_ct.MeanError(),L=L_ct.MeanError())
+    return me,mae,rmse
 
 def verifyPrecip(forecasts, observations, start_date, end_date):
     """
@@ -219,6 +234,36 @@ def verifyPrecip(forecasts, observations, start_date, end_date):
         brier_skill_scores[period]['all'] = BSS
 
     return brier_skill_scores
+
+
+def verifyWinds(forecasts,observations,start_date,end_date):
+    """
+    verifyWinds()
+    Purpose:  Primary wind verification function
+    Parameters:  forecasts [type=dictionary]
+                    Dictionary mapping shift days (e.g. 'Tue_Aft' for Tuesday Afternoon) to their OWLShift objects.
+
+    """
+    rmse = {}
+    all_obs = observations.keys()
+    all_obs.remove('LTS')
+    for period in OWLShift._forecast_days:
+        rmse[period] = {}
+        for station in all_obs:
+            max_ct = windContingencyTable(forecasts, observations, start_date, end_date, winds="max", stations=station, period=period)
+            min_ct = windContingencyTable(forecasts, observations, start_date, end_date, winds="min", stations=station, period=period)
+            print '\n---------------------\n'
+            print station, period
+            print "Maximum Wind Speed:"
+            print "ME:   ",max_ct.MeanError()
+            print "MAE:  ",max_ct.MeanAbsoluteError()
+            print "RMSE: ",max_ct.RootMeanSquareError()
+
+            print "Minimum Wind Speed:"
+            print "ME:   ",min_ct.MeanError()
+            print "MAE:  ",min_ct.MeanAbsoluteError()
+            print "RMSE: ",min_ct.RootMeanSquareError()
+
 
 def dump(grid):
     """
@@ -339,10 +384,67 @@ def tempContingencyTable(forecasts, observations, start_date, end_date, temp="H"
             shift_start_times, shift_end_times = temp_fcasts[:2]
             if temp.upper()=="H":
                 temp_obs = observations[stn].getHighTemps(shift_start_times,shift_end_times)
+                high_idxs = np.nonzero(temp_obs > 150)
+                if len(high_idxs[0]) > 0:
+                    print shift_start_times[high_idxs],temp_obs[high_idxs]
             else:
                 temp_obs = observations[stn].getLowTemps(shift_start_times,shift_end_times)
             temp_ct.addPairs(temp_fcasts[2],temp_obs)
+            
     return temp_ct
+
+####
+def windContingencyTable(forecasts, observations, start_date, end_date, winds="max", stations=None, shift=None, period=None):
+    """
+    precipContingencyTable()
+    Purpose:    Produce a continuous contingency table containing all the temperature forecasts for the period.
+    Parameters: forecasts [type=dictionary]
+                    Dictionary mapping shift days (e.g. 'Tue_Aft' for Tuesday Afternoon) to their OWLShift objects.
+                observations [type=dictionary]
+                    Dictionary mapping observation points (e.g. 'OUN' for Norman) to their ASOS objects.
+                start_date [type=string]
+                    String containing the date of the start of the verification period (format is 'YYYYMMDD_HH:MM').
+                end_date [type=string]
+                    String containing the date of the end of the verification period (format is 'YYYYMMDD_HH:MM', same as in start_date).
+                temp [type=string]
+                    String telling whether the high or low temperature is being evaluated.  "H" for high and "L" for low.
+                stations [type=list,tuple,string]
+                    A station or list of stations to include in the contingency table.  Optional, defaults to KOUN if not given.
+                shift [type=string]
+                    The shift to verify (e.g. 'Tue_Aft' for Tuesday Afternoon).  Not implemented yet.
+                period [type=string]
+                    The period to verify (one of '1A', '1B', '2', '3', or '4').  Optional, defaults to '1A' if not given.
+    Returns:    The completed contingency table as a ContinuousContingencyTable object.
+    """
+    wind_ct = ContinuousContingencyTable(np.array([]),np.array([]))
+    if period is None:
+        period = OWLShift._forecast_days[0]
+
+    if stations is None:
+        stations = observations.keys()
+    elif type(stations) not in [ list, tuple ]:
+        stations = [ stations ]
+
+    for shift_name, shift_data in forecasts.iteritems():
+        for stn in stations:
+            if stn == 'KHHW' or stn == 'HHW':
+                pass
+            else:
+                if winds.upper()=="MAX":
+                    wind_fcasts = shift_data.getForecasts(period, start_date, end_date, "WSHI", verif_to_fcst[stn])
+                else:
+                    wind_fcasts = shift_data.getForecasts(period, start_date, end_date, "WSLO", verif_to_fcst[stn])
+
+                shift_start_times, shift_end_times = wind_fcasts[:2]
+                if winds.upper()=="MAX":
+                    wind_obs = observations[stn].getMaxWinds(shift_start_times,shift_end_times)
+                else:
+                    wind_obs = observations[stn].getMinWinds(shift_start_times,shift_end_times)
+                wind_ct.addPairs(wind_fcasts[2],wind_obs)
+    return wind_ct
+
+####
+
 
 def setPeriodDates(date,shift):
     """setPeriodDates
