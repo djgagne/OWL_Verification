@@ -168,7 +168,7 @@ class ASOS:
             level2 = cloudToValue[self.getDataValues(startDates[idx],endDates[idx],'skyc2')]
             level3 = cloudToValue[self.getDataValues(startDates[idx],endDates[idx],'skyc3')]
             level4 = cloudToValue[self.getDataValues(startDates[idx],endDates[idx],'skyc4')]
-            max(level1,level2,level3,level4)
+            CloudCover.append(max(level1,level2,level3,level4))
         return valueToCloud[np.array(CloudCover,dtype='S3')]
     
 def main():
