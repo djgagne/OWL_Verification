@@ -153,9 +153,33 @@ class ASOS:
             precip1hr = self.getDataValues(startDates[idx], endDates[idx], 'p01m')
 #           if self.site == "ADM" and startDates[idx][-5:] == "10:00" and endDates[idx][-5:] == "18:00":
 #               print startDates[idx], endDates[idx], precip1hr
-            precip.append(precip1hr.sum() > 0)
-        return np.array(precip, dtype=bool)
+            if len(precip1hr) > 0:
+                precip.append(precip1hr.sum())
+            else:
+                precip.append(-998)
+        return np.array(precip, dtype=float)
 
+
+    def getCloudCover(self,startDates,endDates):
+        """getCloudCover(startDates,endDates)
+           Purpose:  Retrieve cloud cover present for given start and end dates
+           Parameters:
+               startDates: array of starting date strings for each forecast period
+               endDates: array of ending date strings for each forecast period
+           Returns:
+               Array of cloud cover corresponding to the periods in startDates and endDates.
+        """
+        cloudToValue = {"CLR":0,"FEW":1,"SCT":2,"BKN":3,"OVC":4,"M":-998}
+        valueToCloud = {0:"CLR",1:"FEW",2:"SCT",3:"BKN",4:"OVC",-998:"M"}
+        CloudCover = []
+        for idx in xrange(len(startDates)):
+            level1 = cloudToValue[self.getDataValues(startDates[idx],endDates[idx],'skyc1')]
+            level2 = cloudToValue[self.getDataValues(startDates[idx],endDates[idx],'skyc2')]
+            level3 = cloudToValue[self.getDataValues(startDates[idx],endDates[idx],'skyc3')]
+            level4 = cloudToValue[self.getDataValues(startDates[idx],endDates[idx],'skyc4')]
+            CloudCover.append(max(level1,level2,level3,level4))
+        return valueToCloud[np.array(CloudCover,dtype='S3')]
+    
 def main():
     for site in ['adm','clk','end','eyw','guy','prx','law','lts','mlc','okc','oun','prx','tul','wwr']:
         print site
@@ -165,5 +189,6 @@ def main():
         print d.data[0]
         print d.getDataValues('20100510_02:00','20100510_23:00','p01m')
         print d.getHighTemps(['20100510_02:00'],['20100510_23:00'])
+        print d.getCloudCover(['20110510_02:00'],['20100510_23:00'])
 if __name__=="__main__":
     main()

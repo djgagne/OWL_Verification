@@ -58,6 +58,7 @@ def main():
             afternoon_shifts[shift_time] = fcsts
         if shift_time[-3:] == "Eve":
             evening_shifts[shift_time] = fcsts
+
     if args.precip:
         scores = verifyPrecip(shifts, asos_sites, args.start, args.end)
         morning_scores = verifyPrecip(morning_shifts, asos_sites, args.start, args.end)
@@ -71,7 +72,7 @@ def main():
             print "All stations: %f" % scores[period]['all']
             for station in station_list:
                 print "%s: %2.2f %2.2f %2.2f %2.2f" % (verif_to_fcst[station], scores[period][station], morning_scores[period][station], afternoon_scores[period][station], evening_scores[period][station])
-                print
+            print
 
     if args.winds:
         verifyWinds(shifts, asos_sites, args.start, args.end)
@@ -205,6 +206,8 @@ def verifyPrecip(forecasts, observations, start_date, end_date):
     for period in OWLShift._forecast_days:
         brier_skill_scores[period] = {}
 
+        cts = []
+
         print "Period %s" % period
         for station in observations.keys():
             print "Day %s forecasts for station %s:" % (period, verif_to_fcst[station])
@@ -216,8 +219,9 @@ def verifyPrecip(forecasts, observations, start_date, end_date):
             print
 
             brier_skill_scores[period][station] = BSS
+            cts.append(ct)
 
-        ct = precipContingencyTable(forecasts, observations, start_date, end_date, period=period)
+        ct = sum(cts, ProbContingencyTable(np.arange(0, 1.1, 0.1), size=11))
         bs,reliability,resolution,uncertainty = ct.BrierScore(components=True)
         BSS = ct.BrierSkillScore()
 
@@ -327,8 +331,9 @@ def precipContingencyTable(forecasts, observations, start_date, end_date, statio
 #               print "Obs:", precip_obs
 
             for idx in range(len(precip_obs)):
-                contingency_table[precip_obs[idx], pprb[2][idx] / 10] += 1
-                total_forecasts += 1
+                if precip_obs[idx] > -990:
+                    contingency_table[precip_obs[idx] > 0, pprb[2][idx] / 10] += 1
+                    total_forecasts += 1
 
     return contingency_table
 
