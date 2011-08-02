@@ -1,5 +1,6 @@
 
 import numpy as np
+from copy import copy
 
 """
 ContingencyTable
@@ -43,6 +44,21 @@ class ContingencyTable(object):
         """
         self.ct[index] = value
         return 
+
+    def __add__(self, other):
+        if type(self) != type(other):
+            print "Error!"
+
+        result = copy(self)
+        result.ct += other.ct       
+        return result
+
+    def __iadd__(self, other):
+        if type(self) != type(other):
+            print "Error!"
+
+        self.ct += other.ct
+        return self
 
     def __str__(self):
         """

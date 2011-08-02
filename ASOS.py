@@ -144,8 +144,11 @@ class ASOS:
             precip1hr = self.getDataValues(startDates[idx], endDates[idx], 'p01m')
 #           if self.site == "ADM" and startDates[idx][-5:] == "10:00" and endDates[idx][-5:] == "18:00":
 #               print startDates[idx], endDates[idx], precip1hr
-            precip.append(precip1hr.sum() > 0)
-        return np.array(precip, dtype=bool)
+            if len(precip1hr) > 0:
+                precip.append(precip1hr.sum())
+            else:
+                precip.append(-998)
+        return np.array(precip, dtype=float)
 
 
     def getCloudCover(self,startDates,endDates):
