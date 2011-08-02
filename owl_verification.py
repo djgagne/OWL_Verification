@@ -29,7 +29,7 @@ def main():
     parser.add_argument('--precip',action='store_true', help='Run precip verification')
     parser.add_argument('--temps',action='store_true', help='Run temperature verification')
     parser.add_argument('--winds',action='store_true', help='Run wind verification')
-    parser.add_argument('--out',help='Output file for verification data.')
+    parser.add_argument('--out',default=None,help='Output file for verification data.')
     args = parser.parse_args()
     if args.update or args.frompickle:
         shifts = pickle.load(open(args.owlpickle))
@@ -88,7 +88,8 @@ def main():
                 for t in ['H','L']:
                     entry = ['TMP' + t,period,station,args.start,args.end,'ALL','ALL',me[period][station][t],mae[period][station][t],rmse[period][station][t]]
                     temp_out.addEntry(*entry)
-        temp_out.toCSV(args.out)
+        if args.out is not None:
+            temp_out.toCSV(args.out)
     return
 
 def collectForecasts(shifts,startDate,endDate,forecastDir='fcst/'):

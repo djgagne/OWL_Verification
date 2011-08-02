@@ -62,18 +62,22 @@ class ASOS:
             Returns:
                 Array of high temperatures corresponding to the periods in startDates and endDates 
             """
-        highTemps = []
+        #highTemps = []
+        highTemps = np.zeros((len(startDates),),dtype=float)
         for idx in xrange(len(startDates)):
             temps = self.getDataValues(startDates[idx],endDates[idx],'tmpf')
              
             if len(temps) > 0:
                 valid_idxs = np.nonzero((temps >= valid_range[0]) & (temps <= valid_range[1]))
-                highTemps.append(np.max(temps[valid_idxs]))
+                #highTemps.append(np.max(temps[valid_idxs]))
+                highTemps[idx] = np.max(temps[valid_idxs])
             else:
-                highTemps.append(-998)
-        return np.array(highTemps,dtype=float)
+                #highTemps.append(-998)
+                highTemps[idx] = -998
+        #return np.array(highTemps,dtype=float)
+        return highTemps
 
-    def getLowTemps(self,startDates,endDates):
+    def getLowTemps(self,startDates,endDates, valid_range = (-40,140)):
         """ getLowTemps(startDates,endDates)
             Purpose:  Retrieve low temperatures for given start and end dates
             Parameters:
@@ -82,15 +86,20 @@ class ASOS:
             Returns:
                 Array of low temperatures corresponding to the periods in startDates and endDates
         """
-        lowTemps = []
+        #lowTemps = []
+        lowTemps = np.zeros((len(startDates),),dtype=float)
         for idx in xrange(len(startDates)):
             temps = self.getDataValues(startDates[idx],endDates[idx],'tmpf')
             if len(temps) > 0:
-                lowTemps.append(np.min(temps))
+                valid_idxs = np.nonzero((temps >= valid_range[0]) & (temps <= valid_range[1]))
+                #lowTemps.append(np.min(temps))
+                lowTemps[idx] = np.min(temps[valid_idxs])
             else:
-                lowTemps.append(-998)
-        return np.array(lowTemps,dtype=float)
-
+                #lowTemps.append(-998)
+                lowTemps[idx] = -998
+        #return np.array(lowTemps,dtype=float)
+        return lowTemps
+    
     def getMaxWinds(self,startDates,endDates):
         """ getMaxWinds(startDates,endDates)
             Purpose:  Retrieve maximum wind speeds for given starting and ending dates
