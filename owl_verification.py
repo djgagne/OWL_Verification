@@ -60,10 +60,11 @@ def main():
             evening_shifts[shift_time] = fcsts
 
     if args.precip:
-        scores = verifyPrecip(shifts, asos_sites, args.start, args.end)
-        morning_scores = verifyPrecip(morning_shifts, asos_sites, args.start, args.end)
-        afternoon_scores = verifyPrecip(afternoon_shifts, asos_sites, args.start, args.end)
-        evening_scores = verifyPrecip(evening_shifts, asos_sites, args.start, args.end)
+        precip_out = OWLOutput(header=['BSS','0','10','20','30','40','50','60','70','80','90','100'])
+        scores,cts = verifyPrecip(shifts, asos_sites, args.start, args.end)
+        #morning_scores = verifyPrecip(morning_shifts, asos_sites, args.start, args.end)
+        #afternoon_scores = verifyPrecip(afternoon_shifts, asos_sites, args.start, args.end)
+        #evening_scores = verifyPrecip(evening_shifts, asos_sites, args.start, args.end)
 
         print "Overall Verification Scores"
         station_list = asos_sites.keys()
@@ -71,8 +72,14 @@ def main():
             print "BSS's for period %s:" % period
             print "All stations: %f" % scores[period]['all']
             for station in station_list:
-                print "%s: %2.2f %2.2f %2.2f %2.2f" % (verif_to_fcst[station], scores[period][station], morning_scores[period][station], afternoon_scores[period][station], evening_scores[period][station])
+                #print "%s: %2.2f %2.2f %2.2f %2.2f" % (verif_to_fcst[station], scores[period][station], morning_scores[period][station], afternoon_scores[period][station], evening_scores[period][station])
+                entry = ['PPRB',period,station,args.start,args.end,'ALL','ALL',scores[period][station]]
+                entry.extend(cts[period][station].getReliability())
+                precip_out.addEntry(*entry)
+      
             print
+        if args.out is not None:
+            precip_out.toCSV(args.out)
 
     if args.winds:
         verifyWinds(shifts, asos_sites, args.start, args.end)
@@ -202,12 +209,12 @@ def verifyPrecip(forecasts, observations, start_date, end_date):
     Returns:    [nothing ... yet]
     """
     brier_skill_scores = {}
+    ct_dict = {}
 
     for period in OWLShift._forecast_days:
         brier_skill_scores[period] = {}
-
+        ct_dict[period] = {}
         cts = []
-
         print "Period %s" % period
         for station in observations.keys():
             print "Day %s forecasts for station %s:" % (period, verif_to_fcst[station])
@@ -219,6 +226,7 @@ def verifyPrecip(forecasts, observations, start_date, end_date):
             print
 
             brier_skill_scores[period][station] = BSS
+            ct_dict[period][station] = ct
             cts.append(ct)
 
         ct = sum(cts, ProbContingencyTable(np.arange(0, 1.1, 0.1), size=11))
@@ -233,8 +241,9 @@ def verifyPrecip(forecasts, observations, start_date, end_date):
         print
 
         brier_skill_scores[period]['all'] = BSS
+        ct_dict[period]['all'] = ct
 
-    return brier_skill_scores
+    return brier_skill_scores,ct_dict
 
 
 def verifyWinds(forecasts,observations,start_date,end_date):
@@ -346,7 +355,7 @@ def splitLine(line,width=5):
 
 def tempContingencyTable(forecasts, observations, start_date, end_date, temp="H", stations=None, shift=None, period=None):
     """
-    precipContingencyTable()
+    tempContingencyTable()
     Purpose:    Produce a continuous contingency table containing all the temperature forecasts for the period.
     Parameters: forecasts [type=dictionary]
                     Dictionary mapping shift days (e.g. 'Tue_Aft' for Tuesday Afternoon) to their OWLShift objects.
@@ -397,8 +406,8 @@ def tempContingencyTable(forecasts, observations, start_date, end_date, temp="H"
 ####
 def windContingencyTable(forecasts, observations, start_date, end_date, winds="max", stations=None, shift=None, period=None):
     """
-    precipContingencyTable()
-    Purpose:    Produce a continuous contingency table containing all the temperature forecasts for the period.
+    windContingencyTable()
+    Purpose:    Produce a continuous contingency table containing all the wind forecasts for the period.
     Parameters: forecasts [type=dictionary]
                     Dictionary mapping shift days (e.g. 'Tue_Aft' for Tuesday Afternoon) to their OWLShift objects.
                 observations [type=dictionary]
@@ -407,7 +416,7 @@ def windContingencyTable(forecasts, observations, start_date, end_date, winds="m
                     String containing the date of the start of the verification period (format is 'YYYYMMDD_HH:MM').
                 end_date [type=string]
                     String containing the date of the end of the verification period (format is 'YYYYMMDD_HH:MM', same as in start_date).
-                temp [type=string]
+                winds [type=string]
                     String telling whether the high or low temperature is being evaluated.  "H" for high and "L" for low.
                 stations [type=list,tuple,string]
                     A station or list of stations to include in the contingency table.  Optional, defaults to KOUN if not given.
