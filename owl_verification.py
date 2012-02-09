@@ -82,8 +82,19 @@ def main():
             precip_out.toCSV(args.out)
 
     if args.winds:
-        verifyWinds(shifts, asos_sites, args.start, args.end)
-    
+        wind_out = OWLOutput(header=['ME','MAE','RMSE'])
+        station_list = asos_sites.keys()
+        station_list.sort()
+        me,mae,rmse = verifyWinds(shifts, asos_sites, args.start, args.end)
+        for period in OWLShift._forecast_days:
+            print 'Day ' + period
+            for station in station_list:
+                print '%s: Max:  %2.2f  Min:  %2.2f' % (verif_to_fcst[station], rmse[period][station]['HI'],rmse[period][station]['LO'])
+                for t in ['HI','LO']: 
+                    entry = ['WS' + t,period,station,args.start,args.end,'ALL','ALL',me[period][station][t],mae[period][station][t],rmse[period][station][t]]
+                    wind_out.addEntry(*entry)
+        if args.out is not None:
+            wind_out.toCSV(args.out)
     if args.temps:
         temp_out = OWLOutput(header=['ME','MAE','RMSE'])
         station_list = asos_sites.keys()
@@ -252,18 +263,25 @@ def verifyWinds(forecasts,observations,start_date,end_date):
     Purpose:  Primary wind verification function
     Parameters:  forecasts [type=dictionary]
                     Dictionary mapping shift days (e.g. 'Tue_Aft' for Tuesday Afternoon) to their OWLShift objects.
-
+                 observations 
     """
     rmse = {}
+    mae = {}
+    me = {}
     all_obs = observations.keys()
-    all_obs.remove('LTS')
     for period in OWLShift._forecast_days:
+        me[period] = {}
+        mae[period] = {}
         rmse[period] = {}
         for station in all_obs:
             max_ct = windContingencyTable(forecasts, observations, start_date, end_date, winds="max", stations=station, period=period)
             min_ct = windContingencyTable(forecasts, observations, start_date, end_date, winds="min", stations=station, period=period)
             print '\n---------------------\n'
             print station, period
+            rmse[period][station] = dict(HI=max_ct.RootMeanSquareError(),LO=min_ct.RootMeanSquareError())
+            mae[period][station] = dict(HI=max_ct.MeanAbsoluteError(),LO=min_ct.MeanAbsoluteError())
+            me[period][station] = dict(HI=max_ct.MeanError(),LO=min_ct.MeanError())
+
             print "Maximum Wind Speed:"
             print "ME:   ",max_ct.MeanError()
             print "MAE:  ",max_ct.MeanAbsoluteError()
@@ -273,7 +291,7 @@ def verifyWinds(forecasts,observations,start_date,end_date):
             print "ME:   ",min_ct.MeanError()
             print "MAE:  ",min_ct.MeanAbsoluteError()
             print "RMSE: ",min_ct.RootMeanSquareError()
-
+    return me,mae,rmse
 
 def dump(grid):
     """

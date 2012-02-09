@@ -4,27 +4,28 @@ class ASOS:
     def __init__(self,site,startDate,endDate,path='verif_data/'):
         """Initialize ASOS class.  Opens file and loads data from file"""
         self.site = site.upper()
-        self.filename=path + self.site + '_asos.txt'
         self.startDateTime = datetime.strptime(startDate,'%Y%m%d')
         self.endDateTime = datetime.strptime(endDate,'%Y%m%d')
-
+        years = range(self.startDateTime.year,self.endDateTime.year + 1)
         data = []
-        datafile = open(self.filename)
-        for line in datafile:
-            if line[0] != '#':
-                if 'station' in line:
-                    self.header = [x.strip() for x in line[:-1].split(',')]
-                else:
-                    dataline = line[:-2].split(',')
-                    for i,val in enumerate(dataline[:-1]):
-                        if val=='M':
-                            dataline[i] = -999
-                    dataline[1] = dataline[1].replace(' ','_')
-                    dataline[1] = dataline[1].replace('-','')
-                    currDateTime = datetime.strptime(dataline[1][:14],'%Y%m%d_%H:%M')
-                    if currDateTime >= self.startDateTime and currDateTime <= self.endDateTime:
-                        data.append(tuple(dataline))
-        datafile.close()
+        for year in years:
+            self.filename=path + self.site + '_asos_' + str(year) + '.txt'
+            datafile = open(self.filename)
+            for line in datafile:
+                if line[0] != '#':
+                    if 'station' in line:
+                        self.header = [x.strip() for x in line[:-1].split(',')]
+                    else:
+                        dataline = line[:-2].split(',')
+                        for i,val in enumerate(dataline[:-1]):
+                            if val=='M':
+                                dataline[i] = -999
+                        dataline[1] = dataline[1].replace(' ','_')
+                        dataline[1] = dataline[1].replace('-','')
+                        currDateTime = datetime.strptime(dataline[1][:14],'%Y%m%d_%H:%M')
+                        if currDateTime >= self.startDateTime and currDateTime <= self.endDateTime:
+                            data.append(tuple(dataline))
+            datafile.close()
         self.datatype = []
         for item in self.header:
             if item == 'station':
@@ -188,7 +189,7 @@ def main():
     for site in ['adm','clk','end','eyw','guy','prx','law','lts','mlc','okc','oun','prx','tul','wwr']:
         print site
         startDate = '20090930'
-        endDate = '20110601'
+        endDate = '20111130'
         d = ASOS(site,startDate,endDate)
         #print d.data[0]
         #print d.getDataValues('20100510_02:00','20100510_23:00','p01m')
